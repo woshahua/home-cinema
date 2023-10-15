@@ -1,0 +1,136 @@
+version: "3"
+services:
+  flaresolverr:
+    # DockerHub mirror flaresolverr/flaresolverr:latest
+    image: flaresolverr/flaresolverr
+    container_name: flaresolverr
+    hostname: flaresolverr
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_HTML=${LOG_HTML:-false}
+      - CAPTCHA_SOLVER=${CAPTCHA_SOLVER:-none}
+      - TZ=Asia/Tokyo
+    ports:
+      - "${PORT:-8191}:8191"
+    restart: unless-stopped
+
+  prowlarr:
+    image: linuxserver/prowlarr:develop
+    container_name: prowlarr
+    hostname: prowlarr
+    depends_on:
+      - flaresolverr
+    environment:
+      - PUID=0
+      - PGID=0
+      - TZ=Asia/Tokyo
+    volumes:
+      - ./prowlarr_config:/config
+    ports:
+      - 9696:9696
+    restart: unless-stopped
+
+  qbittorrent:
+    image: linuxserver/qbittorrent
+    container_name: qbittorrent
+    hostname: qbittorrent
+    environment:
+      - PUID=0
+      - PGID=0
+      - TZ=Asia/Tokyo
+      - WEBUI_PORT=8082
+    volumes:
+      - ./qbittorrent_config:/config
+      - /Users/hanggao/Downloads:/downloads
+    ports:
+      - 8082:8082
+      - 6881:6881
+      - 6881:6881/udp
+    restart: unless-stopped
+
+  sonarr:
+    image: linuxserver/sonarr
+    container_name: sonarr
+    hostname: sonarr
+    depends_on:
+      - qbittorrent
+      - prowlarr
+    environment:
+      - PUID=0
+      - PGID=0
+      - TZ=Asia/Tokyo
+    volumes:
+      - ./sonarr_config:/config
+      - /Users/hanggao/Downloads/TVs:/tv #optional
+      - /Users/hanggao/Downloads/edge/TVs:/tv2 #optional
+      - /Users/hanggao/Downloads:/downloads
+    ports:
+      - 8989:8989
+    restart: unless-stopped
+
+  radarr:
+    image: linuxserver/radarr
+    container_name: radarr
+    hostname: radarr
+    depends_on:
+      - qbittorrent
+      - prowlarr
+    environment:
+      - PUID=0
+      - PGID=0
+      - TZ=Asia/Tokyo
+    volumes:
+      - ./radarr_config:/config
+      - /Users/hanggao/Downloads/Movie:/movies #optional
+      - /Users/hanggao/Downloads:/downloads
+    ports:
+      - 7878:7878
+    restart: unless-stopped
+
+  jellyfin:
+    image: linuxserver/jellyfin:latest
+    container_name: jellyfin
+    hostname: jellyfin
+    depends_on:
+      - radarr
+      - sonarr
+      - lidarr
+      - readarr
+    environment:
+      - PUID=0
+      - PGID=0
+      - TZ=Asia/Tokyo
+      - JELLYFIN_PublishedServerUrl=192.168.1.251 #optional
+    volumes:
+      - ./jellyfin_config:/config
+      - /Users/hanggao/Downloads/TVs:/data/tvshows
+      - /Users/hanggao/Downloads/Movie:/data/movies
+      - /Users/hanggao/Downloads/Music:/data/musics
+      - /Users/hanggao/Downloads/Video:/data/video2
+      - /Users/hanggao/Downloads/edge/Video:/data/video
+      - /Users/hanggao/Downloads/edge/TVs:/data/tvshows2
+    # devices:
+    #   - /dev/dri:/dev/dri
+    ports:
+      - 8096:8096
+      - 8920:8920 #optional
+      - 7359:7359/udp #optional
+      - 1900:1900/udp #optional
+    restart: unless-stopped
+ 
+  chinesesubfinder:
+    image: allanpk716/chinesesubfinder:latest
+    container_name: chinesesubfinder
+    hostname: chinesesubfinder
+    volumes:
+      - ./chinesesubfinder_cache:/app/cache
+      - ./chinesesubfinder_config:/config
+      - /Users/hanggao/Downloads:/media
+    ports:
+      - "19035:19035"
+    environment:
+      - PUID=0
+      - PGID=0
+      - TZ=Asia/Tokyo
+    restart: unless-stopped
+
